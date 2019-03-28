@@ -1,7 +1,9 @@
 ### MythX report generator
 
-Builds an rst report of your MythX analyses.
+Builds a rst report of your MythX analyses.
 
-Supported timeranges: [day, week, all time]
+Supports custom date ranges: 'MM/DD/YYYY'
+
+Supported time ranges: [day, week]
 
 Built using PythX.

@@ -21,29 +21,28 @@ def get_client() -> Client:
         hide_input=True,
         default="trial",
     )
-    return Client(eth_address=eth_address, password=password, staging=False)
-
-def start_date() -> datetime.datetime:
-    range = click.prompt(
-        "Please specify report time range",
-        type=click.STRING,
-        default="day"
-    )
-    start = datetime.datetime.now() - datetime.timedelta(days=1)
-    if range == "week":
-       start = datetime.datetime.now() - datetime.timedelta(weeks=1)
-    elif range == "all time":
-        start = None
-    print(f"START TIME {start}")
-    return start
-
-def generate_report():
-    c = get_client()
+    c = Client(eth_address=eth_address, password=password, staging=False)
     c.login()
-    analyses = c.analysis_list(date_from=start_date())
+    return c
+
+def generate_report(date_from: datetime = None, date_to: datetime = None):
+    c = get_client()
+    detectedIssues = failed_analyses = 0
+    if date_from is not None:
+        date_from = date_from.date()
+        report_range = f"{date_from} to "
+        report_range += "present" if date_to is None else f"{date_to.date()}"
+    else: report_range = "All time"
+    analyses = c.analysis_list(date_from=date_from, date_to=date_to)
+
+    click.echo("=========================================")
+    click.echo(f"Analyses report: {report_range}")
+    click.echo("=========================================")
+
     for analysis in analyses:
         if analysis.status is not finished:
-            click.echo(f"Cannot generate report for analysis {analysis.uuid}; analysis status: {analysis.status}\n")
+            click.echo(f"*Cannot generate report for analysis {analysis.uuid}; analysis status: {analysis.status}*\n")
+            failed_analyses += 1
             continue 
         resp = c.report(analysis.uuid)
         file_to_issue = defaultdict(list)
@@ -55,6 +54,7 @@ def generate_report():
                 file_to_issue[filename].append(
                     (issue.swc_title, issue.severity, issue.description_short)
                 )
+        detectedIssues += len(resp.issues)
         for filename, data in file_to_issue.items():
             click.echo(f"Report for **{filename}** | UUID: {analysis.uuid}\n")
             click.echo(
@@ -69,5 +69,36 @@ def generate_report():
                 )
             )
             click.echo("\n")
+    click.echo(f"Total analyses: {len(analyses)}; Detected issues: {detectedIssues}; Failed analyses: {failed_analyses}")
 
-generate_report()
+@click.group()
+def main():
+    """
+    Simple CLI for generating analysis reports
+    """
+    pass
+
+@main.command(help="Get a report for analyses ran in the past: ['day', 'week', 'all time'].")
+@click.argument("date_range")
+def range(date_range: str):
+    current = datetime.datetime.now()
+    start =  current - datetime.timedelta(days=1)
+    if date_range == "week":
+       start = current - datetime.timedelta(weeks=1)
+    elif date_range == "all time":
+        start = None
+    generate_report(date_from=start)
+
+@main.command(help="Set custom report date range. Date format: 'MM/DD/YYYY'")
+@click.argument("date_from")
+@click.argument("date_to")
+def custom(date_from, date_to):
+    m, d, y = date_from.split('/')
+    datefrom = datetime.datetime(int(y), int(m), int(d))
+    m, d, y = date_to.split('/')
+    dateto = datetime.datetime(int(y), int(m), int(d))
+    generate_report(datefrom, dateto)
+    return
+
+if __name__ == "__main__":
+    main()
