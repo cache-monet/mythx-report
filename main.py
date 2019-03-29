@@ -36,7 +36,7 @@ def generate_report(date_from: datetime = None, date_to: datetime = None):
     analyses = c.analysis_list(date_from=date_from, date_to=date_to)
 
     # Report title
-    click.echo("=========================================")
+    # click.echo("=========================================")
     click.echo(f"Analyses report: {report_range}")
     click.echo("=========================================")
 
@@ -73,7 +73,6 @@ def generate_report(date_from: datetime = None, date_to: datetime = None):
                 )
             )
             click.echo("\n")
-    click.echo("--------")
     click.echo("Summary:")
     click.echo("--------")
     click.echo(f"Total analyses: {analyses.total}; Detected issues: {detectedIssues}; Failed analyses: {failed_analyses}")
